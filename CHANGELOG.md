@@ -1,9 +1,18 @@
-# Change Log
+# Changelog
 
 All notable changes to the "zenco-vscode" extension will be documented in this file.
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.0.1] - 2025-11-27
 
-- Initial release
+### Added
+- **Core Integration**: Initial integration with the Zenco CLI tool for AI-powered code analysis.
+- **Refactoring Support**: Added command to intelligently refactor code files.
+- **Docstring Generation**: Implemented automated docstring generation with support for Google, NumPy, and RST styles.
+- **Type Hinting**: Added support for automatically inserting Python type hints.
+- **Code Cleanup**: Added features to detect magic numbers and remove dead code (safe and strict modes).
+- **Diff Viewer**: Implemented a custom diff view provider to preview changes before application.
+- **Configuration**: Added VS Code settings for selecting AI providers (Groq, OpenAI, Anthropic, Gemini), managing API keys, and customizing model selection.
+- **Status Bar Integration**: Added a status bar item for quick access to Zenco features and applying/discarding pending changes.
