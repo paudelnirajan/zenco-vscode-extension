@@ -1,8 +1,8 @@
 # Zenco for VS Code
 
-[![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/nirajanpaudel.zenco-vscode)](https://marketplace.visualstudio.com/items?itemName=nirajanpaudel.zenco-vscode)
-[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/nirajanpaudel.zenco-vscode)](https://marketplace.visualstudio.com/items?itemName=nirajanpaudel.zenco-vscode)
-[![Visual Studio Marketplace Rating](https://img.shields.io/visual-studio-marketplace/r/nirajanpaudel.zenco-vscode)](https://marketplace.visualstudio.com/items?itemName=nirajanpaudel.zenco-vscode)
+[![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/paudelnirajan.zenco-vscode)](https://marketplace.visualstudio.com/items?itemName=paudelnirajan.zenco-vscode)
+[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/paudelnirajan.zenco-vscode)](https://marketplace.visualstudio.com/items?itemName=paudelnirajan.zenco-vscode)
+[![Visual Studio Marketplace Rating](https://img.shields.io/visual-studio-marketplace/r/paudelnirajan.zenco-vscode)](https://marketplace.visualstudio.com/items?itemName=paudelnirajan.zenco-vscode)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Zenco is an AI-powered code analysis and enhancement tool integrated directly into Visual Studio Code. It leverages Large Language Models (LLMs) to automatically generate docstrings, add type hints, detect magic numbers, remove dead code, and provide intelligent refactoring suggestions across multiple programming languages including Python, JavaScript, Java, Go, and C++.
