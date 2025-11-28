@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import {
     refactorFile,
     addDocstrings,
@@ -7,136 +8,75 @@ import {
     removeDeadCode,
     runZencoCommand
 } from './zencoRunner';
-
-/**
- * Helper to apply Zenco results to the editor
- */
-async function applyZencoResult(
-    editor: vscode.TextEditor,
-    result: any,
-    featureName: string,
-    applyChanges: boolean,
-    outputChannel: vscode.OutputChannel
-) {
-    if (result.success) {
-        // Show output in panel
-        if (result.output) {
-            outputChannel.clear();
-            outputChannel.appendLine(`=== Zenco: ${featureName} Results ===`);
-            outputChannel.appendLine(result.output);
-            outputChannel.show(true);
-        }
-
-        if (applyChanges) {
-            if (result.modifiedContent) {
-                // Apply changes directly to the editor using WorkspaceEdit
-                const edit = new vscode.WorkspaceEdit();
-
-                // Calculate the full range of the document
-                const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
-                const fullRange = new vscode.Range(
-                    new vscode.Position(0, 0),
-                    lastLine.range.end
-                );
-
-                console.log(`Applying ${featureName} edit to range:`, fullRange.start.line, fullRange.end.line);
-
-                edit.replace(editor.document.uri, fullRange, result.modifiedContent);
-                const success = await vscode.workspace.applyEdit(edit);
-
-                if (success) {
-                    vscode.window.showInformationMessage(
-                        `✅ ${featureName} applied successfully!`
-                    );
-                } else {
-                    vscode.window.showErrorMessage(
-                        `❌ Failed to apply edits to ${editor.document.fileName}`
-                    );
-                }
-            } else {
-                vscode.window.showWarningMessage('No changes returned from Zenco.');
-            }
-        } else {
-            // Preview Mode
-            vscode.window.showInformationMessage(
-                `👀 ${featureName} preview ready! Check the Output panel.`
-            );
-        }
-    } else {
-        vscode.window.showErrorMessage(`Zenco ${featureName} failed: ${result.error}`);
-    }
-}
-
-/**
- * Helper function to run a Zenco feature with consistent UX
- */
-async function runZencoFeature(
-    featureName: string,
-    featureFunction: (doc: vscode.TextDocument) => Promise<any>,
-    outputChannel: vscode.OutputChannel
-) {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-        vscode.window.showErrorMessage('No file is currently open!');
-        return;
-    }
-
-    // Ask user: Preview or Apply?
-    const choice = await vscode.window.showQuickPick(
-        ['Preview Changes', 'Apply Changes'],
-        {
-            placeHolder: `${featureName}: Preview or Apply?`
-        }
-    );
-
-    if (!choice) {
-        return; // User cancelled
-    }
-
-    const applyChanges = choice === 'Apply Changes';
-
-    await vscode.window.withProgress({
-        location: vscode.ProgressLocation.Notification,
-        title: `Zenco: ${featureName}...`,
-        cancellable: false
-    }, async (progress) => {
-        const result = await featureFunction(editor.document);
-        await applyZencoResult(editor, result, featureName, applyChanges, outputChannel);
-    });
-}
+import { DiffViewer } from './diffViewer';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Congratulations, your extension "zenco" is now active!');
 
-    // Create an output channel for Zenco
+    // State for pending changes
+    let pendingResult: any = null;
+    let pendingEditor: vscode.TextEditor | null = null;
+
+    // 1. Initialize Output Channel
     const outputChannel = vscode.window.createOutputChannel('Zenco');
 
-    // ✨ NEW: Create status bar item
-    const statusBarItem = vscode.window.createStatusBarItem(
-        vscode.StatusBarAlignment.Right,  // Position on the right side
-        100  // Priority (higher = more to the left)
+    // 2. Initialize Diff Viewer
+    const diffViewer = new DiffViewer();
+    context.subscriptions.push(
+        vscode.workspace.registerTextDocumentContentProvider('zenco-diff', diffViewer)
     );
-    statusBarItem.text = "$(zap) Zenco";  // ⚡ icon + text
-    statusBarItem.tooltip = "Click to refactor current file with Zenco";
-    statusBarItem.command = "zenco-vscode.showMenu";  // Command to run when clicked
-    statusBarItem.show();  // Make it visible
 
-    const disposable = vscode.commands.registerCommand('zenco-vscode.helloWorld', () => {
-        vscode.window.showInformationMessage('Hello World from zenco community!');
-    });
+    // 3. Create Status Bar Item
+    const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+    statusBarItem.show();
+    context.subscriptions.push(statusBarItem);
 
-    const refactorCommand = vscode.commands.registerCommand('zenco-vscode.refactorFile', async () => {
+    // Helper to reset status bar
+    function resetStatusBar() {
+        statusBarItem.text = "$(zap) Zenco";
+        statusBarItem.tooltip = "Click to refactor current file with Zenco";
+        statusBarItem.backgroundColor = undefined;
+        statusBarItem.command = 'zenco-vscode.showMenu';
+    }
+
+    // Helper to show apply button
+    function showApplyStatusBar() {
+        statusBarItem.text = "$(check) Apply! or $(x) Discard!";
+        statusBarItem.tooltip = "Choose to apply or discard the changes you are previewing";
+        statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+        statusBarItem.command = 'zenco-vscode.applyPending';
+    }
+
+    // Initialize status bar
+    resetStatusBar();
+
+    /**
+     * Helper function to run a Zenco feature with consistent UX
+     */
+    async function runZencoFeature(
+        featureName: string,
+        featureFunction: (doc: vscode.TextDocument) => Promise<any>,
+        outputChannel: vscode.OutputChannel,
+        diffViewer: DiffViewer
+    ) {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
             vscode.window.showErrorMessage('No file is currently open!');
             return;
         }
 
-        // ✨ Ask user: Preview or Apply?
+        // Reset any previous pending state
+        if (pendingResult) {
+            pendingResult = null;
+            pendingEditor = null;
+            resetStatusBar();
+        }
+
+        // Ask user: Preview or Apply?
         const choice = await vscode.window.showQuickPick(
-            ['Preview Changes', 'Apply Changes'],
+            ['Preview Changes (Diff)', 'Apply Changes'],
             {
-                placeHolder: 'Do you want to preview or apply the refactoring?'
+                placeHolder: `${featureName}: Preview or Apply?`
             }
         );
 
@@ -148,161 +88,186 @@ export function activate(context: vscode.ExtensionContext) {
 
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
-            title: applyChanges ? 'Zenco: Applying changes...' : 'Zenco: Previewing changes...',
+            title: `Zenco: ${featureName}...`,
             cancellable: false
         }, async (progress) => {
-            const options = ['--refactor'];
-            const result = await runZencoCommand(editor.document.uri.fsPath, options);
-            await applyZencoResult(editor, result, 'Refactor File', applyChanges, outputChannel);
-        });
-    });
+            const result = await featureFunction(editor.document);
 
-    // ✨ NEW: Add Docstrings command
-    const addDocstringsCommand = vscode.commands.registerCommand('zenco-vscode.addDocstrings', async () => {
-        await runZencoFeature('Add Docstrings', addDocstrings, outputChannel);
-    });
+            if (result.success) {
+                // Show output in panel
+                if (result.output) {
+                    outputChannel.clear();
+                    outputChannel.appendLine(`=== Zenco: ${featureName} Results ===`);
+                    outputChannel.appendLine(result.output);
+                }
 
-    // ✨ NEW: Add Type Hints command
-    const addTypeHintsCommand = vscode.commands.registerCommand('zenco-vscode.addTypeHints', async () => {
-        await runZencoFeature('Add Type Hints', addTypeHints, outputChannel);
-    });
+                if (applyChanges) {
+                    if (result.modifiedContent) {
+                        const edit = new vscode.WorkspaceEdit();
+                        const fullRange = new vscode.Range(
+                            editor.document.positionAt(0),
+                            editor.document.positionAt(editor.document.getText().length)
+                        );
 
-    // ✨ NEW: Fix Magic Numbers command
-    const fixMagicNumbersCommand = vscode.commands.registerCommand('zenco-vscode.fixMagicNumbers', async () => {
-        await runZencoFeature('Fix Magic Numbers', fixMagicNumbers, outputChannel);
-    });
+                        edit.replace(editor.document.uri, fullRange, result.modifiedContent);
+                        await vscode.workspace.applyEdit(edit);
 
-    // ✨ NEW: Remove Dead Code command
-    const removeDeadCodeCommand = vscode.commands.registerCommand('zenco-vscode.removeDeadCode', async () => {
-        await runZencoFeature('Remove Dead Code', removeDeadCode, outputChannel);
-    });
+                        vscode.window.showInformationMessage(
+                            `✅ ${featureName} applied successfully!`
+                        );
+                    } else {
+                        vscode.window.showWarningMessage('No changes returned from Zenco.');
+                    }
+                } else {
+                    // Preview Mode with Diff View
+                    if (result.originalContent && result.modifiedContent) {
+                        const fileName = path.basename(editor.document.fileName);
 
-    // ✨ NEW: Show Feature Menu command
-    const showMenuCommand = vscode.commands.registerCommand('zenco-vscode.showMenu', async () => {
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) {
-            vscode.window.showErrorMessage('No file is currently open!');
-            return;
-        }
+                        await diffViewer.showDiff(
+                            result.originalContent,
+                            result.modifiedContent,
+                            fileName
+                        );
 
-        // Step 1: Choose feature
-        const feature = await vscode.window.showQuickPick([
-            {
-                label: '$(rocket) Refactor',
-                description: 'Full refactor: docstrings, type hints, magic numbers, dead code',
-                value: 'refactor'
-            },
-            {
-                label: '$(book) Add Docstrings',
-                description: 'Generate docstrings for functions and classes',
-                value: 'docstrings'
-            },
-            {
-                label: '$(symbol-parameter) Add Type Hints',
-                description: 'Add type annotations to function parameters',
-                value: 'typeHints'
-            },
-            {
-                label: '$(symbol-numeric) Fix Magic Numbers',
-                description: 'Replace magic numbers with named constants',
-                value: 'magicNumbers'
-            },
-            {
-                label: '$(trash) Remove Dead Code',
-                description: 'Remove unused imports, variables, and functions',
-                value: 'deadCode'
-            }
-        ], {
-            placeHolder: 'Choose a Zenco feature'
-        });
+                        // ✨ Store state and update status bar
+                        pendingResult = result;
+                        pendingEditor = editor;
+                        showApplyStatusBar();
 
-        if (!feature) {
-            return; // User cancelled
-        }
-
-        // Step 2: Choose action (Preview or Apply)
-        const action = await vscode.window.showQuickPick([
-            {
-                label: '$(eye) Preview Changes',
-                description: 'See what changes will be made (dry run)',
-                value: 'preview'
-            },
-            {
-                label: '$(check) Apply Changes',
-                description: 'Apply changes to the file',
-                value: 'apply'
-            }
-        ], {
-            placeHolder: `${feature.label}: Preview or Apply?`
-        });
-
-        if (!action) {
-            return; // User cancelled
-        }
-
-        const applyChanges = action.value === 'apply';
-
-        // Step 3: Run the selected feature
-        await vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: `Zenco: ${feature.label}...`,
-            cancellable: false
-        }, async (progress) => {
-            let result;
-
-            // Map feature to the appropriate function
-            switch (feature.value) {
-                case 'refactor':
-                    result = await runZencoCommand(
-                        editor.document.uri.fsPath,
-                        ['--refactor']
-                    );
-                    break;
-                case 'docstrings':
-                    result = await runZencoCommand(
-                        editor.document.uri.fsPath,
-                        ['--docstrings']
-                    );
-                    break;
-                case 'typeHints':
-                    result = await runZencoCommand(
-                        editor.document.uri.fsPath,
-                        ['--add-type-hints']
-                    );
-                    break;
-                case 'magicNumbers':
-                    result = await runZencoCommand(
-                        editor.document.uri.fsPath,
-                        ['--fix-magic-numbers']
-                    );
-                    break;
-                case 'deadCode':
-                    result = await runZencoCommand(
-                        editor.document.uri.fsPath,
-                        ['--dead-code']
-                    );
-                    break;
-            }
-
-            if (result) {
-                await applyZencoResult(editor, result, feature.label, applyChanges, outputChannel);
+                        vscode.window.showInformationMessage(
+                            `👀 Previewing ${fileName}. Click "Apply or Discard" in the status bar to finish.`
+                        );
+                    } else {
+                        vscode.window.showWarningMessage('Could not show diff: missing content.');
+                    }
+                }
+            } else {
+                vscode.window.showErrorMessage(`Zenco ${featureName} failed: ${result.error}`);
             }
         });
-    });
+    }
 
-    // Register all commands
+    // 4. Register Commands
+
+    // ✨ NEW: Apply Pending Command
     context.subscriptions.push(
-        disposable,
-        refactorCommand,
-        addDocstringsCommand,
-        addTypeHintsCommand,
-        fixMagicNumbersCommand,
-        removeDeadCodeCommand,
-        outputChannel,
-        statusBarItem,
-        showMenuCommand
+        vscode.commands.registerCommand('zenco-vscode.applyPending', async () => {
+            if (!pendingResult || !pendingEditor) {
+                vscode.window.showErrorMessage('No pending changes to apply.');
+                resetStatusBar();
+                return;
+            }
+
+            // Ask user what to do
+            const choice = await vscode.window.showQuickPick(
+                [
+                    { label: '$(check) Apply Changes', description: 'Apply the previewed changes to the file', value: 'apply' },
+                    { label: '$(x) Discard Changes', description: 'Cancel and discard these changes', value: 'discard' }
+                ],
+                { placeHolder: 'Apply or Discard pending changes?' }
+            );
+
+            if (!choice) {
+                return; // User cancelled the menu
+            }
+
+            if (choice.value === 'discard') {
+                // Discard logic
+                pendingResult = null;
+                pendingEditor = null;
+                resetStatusBar();
+
+                // Close diff editor
+                await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+
+                vscode.window.showInformationMessage('Changes discarded.');
+                return;
+            }
+
+            // Apply logic
+            const edit = new vscode.WorkspaceEdit();
+            const fullRange = new vscode.Range(
+                pendingEditor.document.positionAt(0),
+                pendingEditor.document.positionAt(pendingEditor.document.getText().length)
+            );
+
+            edit.replace(pendingEditor.document.uri, fullRange, pendingResult.modifiedContent);
+            await vscode.workspace.applyEdit(edit);
+
+            vscode.window.showInformationMessage('✅ Changes applied successfully!');
+
+            // Close diff editor
+            await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+
+            // Reset state
+            pendingResult = null;
+            pendingEditor = null;
+            resetStatusBar();
+        })
+    );
+
+    // Refactor File
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zenco-vscode.refactorFile', () => {
+            runZencoFeature('Refactor File', refactorFile, outputChannel, diffViewer);
+        })
+    );
+
+    // Add Docstrings
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zenco-vscode.addDocstrings', () => {
+            runZencoFeature('Add Docstrings', addDocstrings, outputChannel, diffViewer);
+        })
+    );
+
+    // Add Type Hints
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zenco-vscode.addTypeHints', () => {
+            runZencoFeature('Add Type Hints', addTypeHints, outputChannel, diffViewer);
+        })
+    );
+
+    // Fix Magic Numbers
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zenco-vscode.fixMagicNumbers', () => {
+            runZencoFeature('Fix Magic Numbers', fixMagicNumbers, outputChannel, diffViewer);
+        })
+    );
+
+    // Remove Dead Code
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zenco-vscode.removeDeadCode', () => {
+            runZencoFeature('Remove Dead Code', removeDeadCode, outputChannel, diffViewer);
+        })
+    );
+
+    // Show Menu (Status Bar Click)
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zenco-vscode.showMenu', async () => {
+            const options = [
+                { label: '$(beaker) Refactor File', command: 'zenco-vscode.refactorFile' },
+                { label: '$(book) Add Docstrings', command: 'zenco-vscode.addDocstrings' },
+                { label: '$(symbol-parameter) Add Type Hints', command: 'zenco-vscode.addTypeHints' },
+                { label: '$(wand) Fix Magic Numbers', command: 'zenco-vscode.fixMagicNumbers' },
+                { label: '$(trash) Remove Dead Code', command: 'zenco-vscode.removeDeadCode' }
+            ];
+
+            const selection = await vscode.window.showQuickPick(options, {
+                placeHolder: 'Select a Zenco feature to run'
+            });
+
+            if (selection) {
+                vscode.commands.executeCommand(selection.command);
+            }
+        })
+    );
+
+    // Hello World
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zenco-vscode.helloWorld', () => {
+            vscode.window.showInformationMessage('Hello World from zenco community!');
+        })
     );
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() { }
