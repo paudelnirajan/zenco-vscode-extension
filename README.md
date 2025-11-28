@@ -62,6 +62,17 @@ To configure these settings:
 
 ## Release Notes
 
+### 0.0.3
+
+*   Changed display name to "Zenco" for cleaner branding in the marketplace.
+*   Added homepage link to developer's portfolio website.
+
+### 0.0.2
+
+*   Fixed repository URL in package.json.
+*   Ensured extension icon is properly packaged and displayed in the marketplace.
+*   Changed display name to "Zenco" for better branding.
+
 ### 0.0.1
 
 *   Initial release of the Zenco VS Code extension.
