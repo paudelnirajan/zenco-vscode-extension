@@ -2,13 +2,13 @@
   "name": "zenco-vscode",
   "displayName": "zenco-vscode",
   "description": "AI-powered code refactoring with Zenco",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "paudelnirajan",
   "icon": "zenco.png",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/paudelnirajan/zenco-vscode"
+    "url": "https://github.com/paudelnirajan/zenco-vscode-extension"
   },
   "engines": {
     "vscode": "^1.95.0"
