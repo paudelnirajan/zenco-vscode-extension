@@ -2,10 +2,13 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import {
     refactorFile,
+    refactorFileStrict,
     addDocstrings,
+    improveDocstrings,
     addTypeHints,
     fixMagicNumbers,
     removeDeadCode,
+    removeDeadCodeStrict,
     runZencoCommand
 } from './zencoRunner';
 import { DiffViewer } from './diffViewer';
@@ -241,15 +244,47 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // Refactor File (Strict Mode)
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zenco-vscode.refactorFileStrict', () => {
+            runZencoFeature('Refactor File (Strict)', refactorFileStrict, outputChannel, diffViewer);
+        })
+    );
+
+    // Improve Existing Docstrings
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zenco-vscode.improveDocstrings', () => {
+            runZencoFeature('Improve Docstrings', improveDocstrings, outputChannel, diffViewer);
+        })
+    );
+
+    // Remove Dead Code (Strict Mode)
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zenco-vscode.removeDeadCodeStrict', () => {
+            runZencoFeature('Remove Dead Code (Strict)', removeDeadCodeStrict, outputChannel, diffViewer);
+        })
+    );
+
+    // Open Zenco Settings
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zenco-vscode.openSettings', () => {
+            vscode.commands.executeCommand('workbench.action.openSettings', 'zenco');
+        })
+    );
+
     // Show Menu (Status Bar Click)
     context.subscriptions.push(
         vscode.commands.registerCommand('zenco-vscode.showMenu', async () => {
             const options = [
+                { label: '$(gear) Configure Zenco', command: 'zenco-vscode.openSettings' },
                 { label: '$(beaker) Refactor File', command: 'zenco-vscode.refactorFile' },
+                { label: '$(beaker) Refactor File (Strict)', command: 'zenco-vscode.refactorFileStrict' },
                 { label: '$(book) Add Docstrings', command: 'zenco-vscode.addDocstrings' },
+                { label: '$(book) Improve Existing Docstrings', command: 'zenco-vscode.improveDocstrings' },
                 { label: '$(symbol-parameter) Add Type Hints', command: 'zenco-vscode.addTypeHints' },
                 { label: '$(wand) Fix Magic Numbers', command: 'zenco-vscode.fixMagicNumbers' },
-                { label: '$(trash) Remove Dead Code', command: 'zenco-vscode.removeDeadCode' }
+                { label: '$(trash) Remove Dead Code', command: 'zenco-vscode.removeDeadCode' },
+                { label: '$(trash) Remove Dead Code (Strict)', command: 'zenco-vscode.removeDeadCodeStrict' }
             ];
 
             const selection = await vscode.window.showQuickPick(options, {
@@ -270,4 +305,4 @@ export function activate(context: vscode.ExtensionContext) {
     );
 }
 
-export function deactivate() { }
+export function deactivate() { } 

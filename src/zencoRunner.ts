@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { ZencoConfig } from './config';
 
 const execAsync = promisify(exec);
 
@@ -21,14 +22,29 @@ export async function runZencoCommand(
     options: string[] = ['--refactor']
 ): Promise<ZencoResult> {
     try {
-        // ✨ NEW: Always add --json flag
+        // ✨ Check if config is valid (has API key if using LLM)
+        const configCheck = ZencoConfig.isConfigValid();
+        if (!configCheck.valid) {
+            return {
+                success: false,
+                error: configCheck.message
+            };
+        }
+
+        // ✨ Build CLI arguments with configuration (provider, model, style, strategy)
+        const cliArgs = ZencoConfig.buildCliArgs(options);
+
+        // ✨ Always add --json flag
         // We use Set to avoid duplicates if options already has --json
-        const uniqueOptions = Array.from(new Set([...options, '--json']));
+        const uniqueOptions = Array.from(new Set([...cliArgs, '--json']));
 
         const zencoCommand = `zenco run "${filePath}" ${uniqueOptions.join(' ')}`;
         console.log('Running:', zencoCommand); // For debugging
 
-        const { stdout, stderr } = await execAsync(zencoCommand);
+        // ✨ Get environment variables with API key (passed securely via env, not CLI)
+        const env = ZencoConfig.getEnvVars();
+
+        const { stdout, stderr } = await execAsync(zencoCommand, { env });
 
         try {
             // ✨ NEW: Parse JSON output
@@ -147,4 +163,28 @@ export async function fixMagicNumbers(document: vscode.TextDocument): Promise<Ze
 export async function removeDeadCode(document: vscode.TextDocument): Promise<ZencoResult> {
     const filePath = document.uri.fsPath;
     return runZencoCommand(filePath, ['--dead-code']);
+}
+
+/**
+ * Refactor file with strict mode (includes strict dead code removal)
+ */
+export async function refactorFileStrict(document: vscode.TextDocument): Promise<ZencoResult> {
+    const filePath = document.uri.fsPath;
+    return runZencoCommand(filePath, ['--refactor-strict']);
+}
+
+/**
+ * Remove dead code with strict mode
+ */
+export async function removeDeadCodeStrict(document: vscode.TextDocument): Promise<ZencoResult> {
+    const filePath = document.uri.fsPath;
+    return runZencoCommand(filePath, ['--dead-code-strict']);
+}
+
+/**
+ * Improve existing docstrings (overwrite poor quality ones)
+ */
+export async function improveDocstrings(document: vscode.TextDocument): Promise<ZencoResult> {
+    const filePath = document.uri.fsPath;
+    return runZencoCommand(filePath, ['--docstrings', '--overwrite-existing']);
 }

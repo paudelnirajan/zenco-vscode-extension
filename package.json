@@ -3,6 +3,13 @@
   "displayName": "zenco-vscode",
   "description": "AI-powered code refactoring with Zenco",
   "version": "0.0.1",
+  "publisher": "paudelnirajan",
+  "icon": "zenco.png",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paudelnirajan/zenco-vscode"
+  },
   "engines": {
     "vscode": "^1.95.0"
   },
@@ -42,8 +49,80 @@
       {
         "command": "zenco-vscode.showMenu",
         "title": "Zenco: Show Feature Menu"
+      },
+      {
+        "command": "zenco-vscode.refactorFileStrict",
+        "title": "Zenco: Refactor File (Strict Mode)"
+      },
+      {
+        "command": "zenco-vscode.improveDocstrings",
+        "title": "Zenco: Improve Existing Docstrings"
+      },
+      {
+        "command": "zenco-vscode.removeDeadCodeStrict",
+        "title": "Zenco: Remove Dead Code (Strict Mode)"
+      },
+      {
+        "command": "zenco-vscode.openSettings",
+        "title": "Zenco: Configure Settings"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Zenco",
+      "properties": {
+        "zenco.provider": {
+          "type": "string",
+          "enum": [
+            "groq",
+            "openai",
+            "anthropic",
+            "gemini"
+          ],
+          "default": "groq",
+          "description": "LLM provider to use for code analysis"
+        },
+        "zenco.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for the selected provider (stored securely)",
+          "markdownDescription": "API key for the selected provider. Get your key from:\n- Groq: https://console.groq.com/keys\n- OpenAI: https://platform.openai.com/api-keys\n- Anthropic: https://console.anthropic.com/\n- Gemini: https://aistudio.google.com/app/apikey"
+        },
+        "zenco.model": {
+          "type": "string",
+          "default": "",
+          "description": "Model name (leave empty for provider default)",
+          "markdownDescription": "Specific model to use. Examples:\n- Groq: `llama-3.3-70b-versatile`\n- OpenAI: `gpt-4o-mini`\n- Anthropic: `claude-3-5-sonnet-latest`\n- Gemini: `gemini-1.5-pro`"
+        },
+        "zenco.docstringStyle": {
+          "type": "string",
+          "enum": [
+            "google",
+            "numpy",
+            "rst"
+          ],
+          "default": "google",
+          "description": "Docstring format style",
+          "enumDescriptions": [
+            "Google-style docstrings (most common)",
+            "NumPy-style docstrings (scientific Python)",
+            "reStructuredText (Sphinx documentation)"
+          ]
+        },
+        "zenco.strategy": {
+          "type": "string",
+          "enum": [
+            "llm",
+            "mock"
+          ],
+          "default": "llm",
+          "description": "Processing strategy",
+          "enumDescriptions": [
+            "Use real LLM API (requires API key)",
+            "Mock mode for testing (no API calls)"
+          ]
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
@@ -57,7 +136,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.106.1",
+    "@types/vscode": "^1.95.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "typescript-eslint": "^8.46.3",
