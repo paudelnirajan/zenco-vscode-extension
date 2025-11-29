@@ -1,8 +1,8 @@
 {
   "name": "zenco-vscode",
   "displayName": "Zenco",
-  "description": "AI-powered code refactoring with Zenco",
-  "version": "0.0.3",
+  "description": "AI-powered code refactoring, docstring generation, and type hinting.",
+  "version": "0.1.0",
   "publisher": "paudelnirajan",
   "icon": "zenco.png",
   "license": "MIT",
@@ -66,6 +66,14 @@
       {
         "command": "zenco-vscode.openSettings",
         "title": "Zenco: Configure Settings"
+      },
+      {
+        "command": "zenco-vscode.checkCli",
+        "title": "Zenco: Check CLI Installation"
+      },
+      {
+        "command": "zenco-vscode.installCli",
+        "title": "Zenco: Install/Reinstall CLI"
       }
     ],
     "configuration": {

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { ZencoConfig } from './config';
+import { checkCliInstallation } from './cliManager';
 
 const execAsync = promisify(exec);
 
@@ -38,7 +39,11 @@ export async function runZencoCommand(
         // We use Set to avoid duplicates if options already has --json
         const uniqueOptions = Array.from(new Set([...cliArgs, '--json']));
 
-        const zencoCommand = `zenco run "${filePath}" ${uniqueOptions.join(' ')}`;
+        // ✨ Resolve CLI path (handles PATH issues)
+        const cliCheck = await checkCliInstallation();
+        const zencoExecutable = cliCheck.resolvedPath || 'zenco';
+
+        const zencoCommand = `"${zencoExecutable}" run "${filePath}" ${uniqueOptions.join(' ')}`;
         console.log('Running:', zencoCommand); // For debugging
 
         // ✨ Get environment variables with API key (passed securely via env, not CLI)

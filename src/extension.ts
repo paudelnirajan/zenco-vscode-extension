@@ -12,9 +12,29 @@ import {
     runZencoCommand
 } from './zencoRunner';
 import { DiffViewer } from './diffViewer';
+import { ensureCliInstalled, checkCliInstallation } from './cliManager';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Congratulations, your extension "zenco" is now active!');
+
+    /**
+     * STEP 8: Check CLI installation on activation
+     * 
+     * Why? We want to check if zenco CLI is installed as soon as the extension loads.
+     * This gives users immediate feedback and allows them to install it before trying to use features.
+     * 
+     * How? We use 'onStartupFinished' activation event (already in package.json line 21)
+     * which runs after VS Code fully loads, so we don't slow down startup.
+     * 
+     * We don't await this - it runs in background and shows prompt if needed.
+     */
+    ensureCliInstalled(context, false).then(isInstalled => {
+        if (isInstalled) {
+            console.log('Zenco CLI is ready!');
+        } else {
+            console.log('Zenco CLI not available - user will be prompted when needed');
+        }
+    });
 
     // State for pending changes
     let pendingResult: any = null;
@@ -277,6 +297,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('zenco-vscode.showMenu', async () => {
             const options = [
                 { label: '$(gear) Configure Zenco', command: 'zenco-vscode.openSettings' },
+                { label: '$(cloud-download) Check CLI Installation', command: 'zenco-vscode.checkCli' },
                 { label: '$(beaker) Refactor File', command: 'zenco-vscode.refactorFile' },
                 { label: '$(beaker) Refactor File (Strict)', command: 'zenco-vscode.refactorFileStrict' },
                 { label: '$(book) Add Docstrings', command: 'zenco-vscode.addDocstrings' },
@@ -301,6 +322,45 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('zenco-vscode.helloWorld', () => {
             vscode.window.showInformationMessage('Hello World from zenco community!');
+        })
+    );
+
+    /**
+     * STEP 9: Add CLI Management Commands
+     * 
+     * Why? Give users manual control over CLI installation:
+     * - Check current status
+     * - Force reinstall if something breaks
+     * - See what version is installed
+     */
+
+    // Check CLI Installation Status
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zenco-vscode.checkCli', async () => {
+            const result = await checkCliInstallation();
+
+            if (result.installed) {
+                vscode.window.showInformationMessage(
+                    `✅ Zenco CLI ${result.version} is installed and ready!`
+                );
+            } else {
+                const choice = await vscode.window.showWarningMessage(
+                    '❌ Zenco CLI is not installed.',
+                    'Install Now',
+                    'Manual Instructions'
+                );
+
+                if (choice === 'Install Now') {
+                    await ensureCliInstalled(context, true);
+                }
+            }
+        })
+    );
+
+    // Force Install/Reinstall CLI
+    context.subscriptions.push(
+        vscode.commands.registerCommand('zenco-vscode.installCli', async () => {
+            await ensureCliInstalled(context, true);
         })
     );
 }
