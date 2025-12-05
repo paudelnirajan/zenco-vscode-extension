@@ -12,9 +12,10 @@ import {
     runZencoCommand
 } from './zencoRunner';
 import { DiffViewer } from './diffViewer';
+import { Logger } from './logger';
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Congratulations, your extension "zenco" is now active!');
+    Logger.getInstance().info('Congratulations, your extension "zenco" is now active!');
 
     // State for pending changes
     let pendingResult: any = null;
