@@ -24,13 +24,28 @@ Zenco streamlines your development workflow by automating code quality tasks:
 
 ## Requirements
 
-This extension relies on the Zenco CLI tool to perform code analysis. Please ensure it is installed on your system before using the extension.
+This extension requires the Zenco CLI tool to perform code analysis.
 
-To install the Zenco CLI, run the following command in your terminal:
+### Automatic Installation (Recommended)
+
+When you first use the extension, you'll be prompted to install the Zenco CLI automatically. Simply click "Install" and the extension will handle the setup for you!
+
+### Manual Installation
+
+If you prefer to install manually, or if automatic installation fails, run:
 
 ```bash
 pip install zenco
 ```
+
+### Checking Installation
+
+You can verify your CLI installation at any time:
+1. Open the Command Palette (Cmd+Shift+P / Ctrl+Shift+P)
+2. Run "Zenco: Check CLI Installation"
+
+The extension will show your installed version and offer to upgrade if needed.
+
 
 ## Extension Settings
 
@@ -62,19 +77,27 @@ To configure these settings:
 
 ## Release Notes
 
+See [CHANGELOG.md](CHANGELOG.md) for full release history.
+
+### 0.1.0
+
+- Automatic Zenco CLI installation and management
+- Smart path resolution for CLI detection across all platforms
+- CLI management commands for checking and reinstalling
+- Improved error handling and cross-platform compatibility
+
 ### 0.0.3
 
-*   Changed display name to "Zenco" for cleaner branding in the marketplace.
-*   Added homepage link to developer's portfolio website.
+- Changed display name to "Zenco" for cleaner branding in the marketplace.
+- Added homepage link to developer's portfolio website.
 
 ### 0.0.2
 
-*   Fixed repository URL in package.json.
-*   Ensured extension icon is properly packaged and displayed in the marketplace.
-*   Changed display name to "Zenco" for better branding.
+- Fixed repository URL in package.json.
+- Ensured extension icon is properly packaged and displayed in the marketplace.
 
 ### 0.0.1
 
-*   Initial release of the Zenco VS Code extension.
-*   Support for Refactoring, Docstrings, Type Hints, Magic Numbers, and Dead Code removal.
-*   Integration with Groq, OpenAI, Anthropic, and Gemini.
+- Initial release of the Zenco VS Code extension.
+- Support for Refactoring, Docstrings, Type Hints, Magic Numbers, and Dead Code removal.
+- Integration with Groq, OpenAI, Anthropic, and Gemini.
