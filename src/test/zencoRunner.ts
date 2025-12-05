@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { Logger } from '../logger';
 // Convert callback-based exec to Promise-based
 const execAsync = promisify(exec);
 export class ZencoRunner {
@@ -21,7 +22,7 @@ export class ZencoRunner {
             const { stdout, stderr } = await execAsync(command);
 
             if (stderr) {
-                console.error('Zenco stderr:', stderr);
+                Logger.getInstance().error('Zenco stderr: ' + stderr);
             }
 
             return stdout;
