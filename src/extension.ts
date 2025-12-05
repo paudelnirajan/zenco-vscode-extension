@@ -12,10 +12,11 @@ import {
     runZencoCommand
 } from './zencoRunner';
 import { DiffViewer } from './diffViewer';
+import { Logger } from './logger';
 import { ensureCliInstalled, checkCliInstallation } from './cliManager';
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Congratulations, your extension "zenco" is now active!');
+    Logger.getInstance().info('Congratulations, your extension "zenco" is now active!');
 
     /**
      * STEP 8: Check CLI installation on activation

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { ZencoConfig } from './config';
+import { Logger } from './logger';
 import { checkCliInstallation } from './cliManager';
 
 const execAsync = promisify(exec);
@@ -44,7 +45,7 @@ export async function runZencoCommand(
         const zencoExecutable = cliCheck.resolvedPath || 'zenco';
 
         const zencoCommand = `"${zencoExecutable}" run "${filePath}" ${uniqueOptions.join(' ')}`;
-        console.log('Running:', zencoCommand); // For debugging
+        Logger.getInstance().info('Running: ' + zencoCommand); // For debugging
 
         // ✨ Get environment variables with API key (passed securely via env, not CLI)
         const env = ZencoConfig.getEnvVars();
@@ -90,8 +91,8 @@ export async function runZencoCommand(
 
         } catch (parseError) {
             // Fallback for non-JSON output or parse errors
-            console.error('JSON Parse Error:', parseError);
-            console.log('Raw Output:', stdout);
+            Logger.getInstance().error('JSON Parse Error: ' + String(parseError));
+            Logger.getInstance().info('Raw Output: ' + stdout);
 
             if (stderr && !stdout) {
                 return { success: false, error: stderr };
