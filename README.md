@@ -78,6 +78,15 @@ To configure these settings:
 ## Release Notes
 
 See [CHANGELOG.md](CHANGELOG.md) for full release history.
+## Collaborators
+
+<a href="https://github.com/NirajanPaudel">
+  <img src="https://github.com/paudelnirajan.png" width="60" height="60" />
+</a>
+
+<a href="https://github.com/AruruGunabhiram">
+  <img src="https://github.com/AruruGunabhiram.png" width="60" height="60" />
+</a>
 
 ### 0.1.0
 
